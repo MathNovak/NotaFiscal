@@ -85,9 +85,10 @@ addstoreVar.set(storeOptions[0])
 
 ##################### generate bill ####################
 
-#itemList = 
-#totalCost =
-#totalCostVar =
+itemList = list()
+totalCost = 0.0
+totalCostVar = StringVar()
+totalCostVar.set(f"Valor Total = {totalCost}")
 
 def generate_bill():
     global itemRate
@@ -95,9 +96,9 @@ def generate_bill():
     global itemVariable
     global costVar
     global rateVar
-#    global itemList
-#    global totalCost
-#    global totalCostVar
+    global itemList
+    global totalCost
+    global totalCostVar
 
     rate = rateVar.get()
     itemName = itemVariable.get()
@@ -111,9 +112,40 @@ def generate_bill():
     cursor.execute(query)
     conn.commit()
     conn.close()
+    
+
+    listDict = {"name":itemName,"rate":itemRate,"quantity":quantity,"cost":cost}
+    itemList.append(listDict)
+    totalCost += float(cost)
 
     quantityVar.set("0")
     costVar.set("0")
+    updateListView()
+    totalCostVar.set(f"Valor Total = {totalCost}")
+
+################### updateBill ########################
+
+def updateListView():
+    records = billsTV.get_children()
+    for element in records:
+        billsTV.delete(element)
+
+    
+    for row in itemList:
+        billsTV.insert('','end',text=row['name'],values=(row["rate"],row["quantity"],row["cost"]))
+    
+ ###################### print recibo #########################   
+
+def print_bill():
+    print("ㅤ"*5)
+    print("==================== Nota Fiscal ===================")
+    print("================== Seja Bem Vindo ==================\n")
+    print("{:<20}{:<10}{:<15}{:<10}".format("Nome:","Preço:","quantidade:","Valor:"))
+
+    for item in itemList:   
+        print("{:<20}{:<10}{:<15}{:<10}".format(item["name"],item["rate"],item["quantity"],item["cost"]))
+
+    print("ㅤ"*5)    
 
 ################### exit ######################
 
@@ -201,6 +233,7 @@ def adminLogin():
         readAllData()
     else:
         messagebox.showerror("USUARIO INVALIDO","FAVOR DIGITAR SENHA CORRETAMENTE.")
+        
 ####################### funcao add item ################################
 
 def additemListener():
@@ -344,7 +377,7 @@ def mainwindow():
     quantityEntry = Entry(window, textvariable=quantityVar)
     quantityEntry.grid(row=2, column=3,padx=(5,0), pady=(10,0))
 
-    buttonBill = Button(window, text='Gerar Nota', command=lambda:generate_bill())
+    buttonBill = Button(window, text='add p Lista', command=lambda:generate_bill())
     buttonBill.grid(row=2,column=4,padx=(5,0), pady=(10,0))
 
     ################### tree view ##############################
@@ -364,9 +397,16 @@ def mainwindow():
     billsTV.heading('#2', text="Quantidade")
     billsTV.heading('#3', text="Valor")
 
-    
-    
+    totalCostLabel = Label(window, textvariable=totalCostVar,bg='lightblue')
+    totalCostLabel.grid(row=6,column=1,padx=(5,0), pady=(10,0))
 
+    generateBill = Button(window, text='Gerar Nota',font=("bold", 10), width=15,bg="blue", fg="white" ,command=lambda:print_bill())
+    generateBill.grid(row=6,column=3, pady=(0.5))
+
+    updateListView()
+
+    
+    
 
 loginWindow()
 
