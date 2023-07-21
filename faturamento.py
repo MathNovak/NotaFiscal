@@ -121,7 +121,28 @@ def generate_bill():
     quantityVar.set("0")
     costVar.set("0")
     updateListView()
-    totalCostVar.set(f"Valor Total = {totalCost}")
+    totalCostVar.set(f"Valor Total = {totalCost:.2f}")
+
+##################### Double click on ############################
+
+updateItemId = ""
+
+def onDoubleClick(event):
+    global addItemNameVar
+    global addItemRateVar
+    global addItemTypeVar
+    global addstoreVar
+    global updateItemId
+
+    item = updateTV.selection()
+    updateItemId = updateTV.item(item, "text")
+    item_detail = updateTV.item(item,"values")
+    item_index = storeOptions.index(item_detail[3])
+    addItemTypeVar.set(item_detail[2])
+    addItemRateVar.set(item_detail[1])
+    addItemNameVar.set(item_detail[0])
+    addstoreVar.set(storeOptions[item_index])
+    
 
 ################### updateBill ########################
 
@@ -133,17 +154,49 @@ def updateListView():
     
     for row in itemList:
         billsTV.insert('','end',text=row['name'],values=(row["rate"],row["quantity"],row["cost"]))
+
+ ####################### pegar item da lista #################################
+
+def getItemLists():
+    records = updateTV.get_children()
+    for element in records:
+        updateTV.delete(element)
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    query = f'select * from itemlist'
+    cursor.execute(query)
+
+    data = cursor.fetchall()
+    for row in data:
+        updateTV.insert('','end',text=row['nameid'],values=(row['name'], row['rate'], row['type'], row['storetype']))
     
+    updateTV.bind("<Double-1>", onDoubleClick)
+    conn.close()
+
  ###################### print recibo #########################   
 
 def print_bill():
+    global itemList
+    global totalCost
+
     print("ㅤ"*5)
     print("==================== Nota Fiscal ===================")
     print("================== Seja Bem Vindo ==================\n")
     print("{:<20}{:<10}{:<15}{:<10}".format("Nome:","Preço:","quantidade:","Valor:"))
-
+    print('----------------------------------------------------')
+    
     for item in itemList:   
         print("{:<20}{:<10}{:<15}{:<10}".format(item["name"],item["rate"],item["quantity"],item["cost"]))
+
+    print('----------------------------------------------------')
+    print("{:<20}{:<10}{:<15}{:<10.2f}".format("Valor Total"," "," ",totalCost))
+
+    itemList = []
+    totalCost = 0.0
+    updateListView()
+    totalCostVar.set(f"Valor Total = {totalCost:.2f}")
 
     print("ㅤ"*5)    
 
@@ -265,6 +318,59 @@ def funcAddItem():
     addItemTypeVar.set("")
     addstoreVar.set("")
 
+######################### udpate itens ##############################
+
+updateTV = ttk.Treeview(height=15, columns=('name','rate', 'type', 'storetype'))
+
+def updateItem():
+    global addItemNameVar
+    global addItemRateVar
+    global addItemTypeVar
+    global addstoreVar
+    global updateItemId
+
+    name = addItemNameVar.get()
+    rate = addItemRateVar.get()
+    type = addItemTypeVar.get()
+    storeType = addstoreVar.get()
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor()
+
+    query =  f"update itemlist set name='{name}', rate='{rate}', type='{type}', storetype='{storeType}' where nameid='{updateItemId}'"
+    cursor.execute(query)
+    conn.commit()
+    conn.close()
+
+    addItemNameVar.set("")
+    addItemRateVar.set("")
+    addItemTypeVar.set("")
+    addstoreVar.set("")
+
+    getItemLists()
+
+def movetoUpdate():
+    remove_all_widgets()
+    updateItemWindow()
+
+def updateBillsData():
+    records = billsTV.get_children()
+    for element in records:
+        billsTV.delete(element)
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    query = f"select * from bill"
+    cursor.execute(query)
+    data = cursor.fetchall()
+    
+    for row in data:
+        billsTV.insert('','end',text=row['name'],values=(row["rate"],row["quantity"],row["cost"]))
+
+    conn.close()
+    
+
 ####################### btn voltar ################################
 
 '''def goBack():
@@ -341,10 +447,16 @@ def mainwindow():
     titleLabel = Label(window, text="CUPOM FISCAL", font="arial 30", fg="blue",bg='lightblue')
     titleLabel.grid(row=0, column=1, columnspan=3, pady=(10,0))
 
-    addButton = Button(window, text='Add Itens', width=15, height=2, font="arial 8", command=lambda:additemListener())
+    addButton = Button(window, text='Add Itens', width=15, height=2, font="arial 12", command=lambda:additemListener())
     addButton.grid(row=1, column=0, padx=(10,0), pady=(10,0))
 
-    LogoutBtn = Button(window, text='Sair', width=15, height=2, font="arial 8", command=lambda:iExit())
+    updateButton = Button(window, text='Atualizar', width=15, height=2, font="arial 12", command=lambda:movetoUpdate())
+    updateButton.grid(row=1, column=1, padx=(10,0), pady=(10,0))
+
+    ListButton = Button(window, text='Lista', width=15, height=2, font="arial 12", command=lambda:movetoList())
+    ListButton.grid(row=1, column=2, padx=(10,0), pady=(10,0))
+
+    LogoutBtn = Button(window, text='Sair', width=15, height=2, font="arial 12", command=lambda:iExit())
     LogoutBtn.grid(row=1, column=4,  pady=(10,0))
 
     itemLabel = Label(window, text="Selecionar Item:",bg='lightblue')
@@ -405,8 +517,88 @@ def mainwindow():
 
     updateListView()
 
-    
-    
+###################### att itens #####################################
+
+def updateItemWindow():
+
+    backButton = Button(window, text="Voltar",font="arial 10",bg="blue",fg='white',command=lambda:readAllData())
+    backButton.grid(row=0, column=0, padx=(10,0))
+
+    window.geometry("1050x550")
+    titleLabel = Label(window, text="CUPOM FISCAL", font="arial 30",width=25, fg="blue",bg="lightblue")
+    titleLabel.grid(row=0, column=1, columnspan=4, pady=(10,0))
+
+    itemNameLabel = Label(window, text="Nome:",bg="lightblue",font=("bold", 15))
+    itemNameLabel.grid(row=1, column=1 , padx=(10,0), pady=(10,0))
+
+    itemNameEntry = Entry(window, textvariable=addItemNameVar)
+    itemNameEntry.grid(row=1, column=2 , padx=(10,0), pady=(10,0))
+
+    itemRateLabel = Label(window, text="Preço Produto:",bg="lightblue",font=("bold", 15))
+    itemRateLabel.grid(row=1, column=3 , padx=(10,0), pady=(10,0))
+
+    itemRateEntry = Entry(window, textvariable=addItemRateVar)
+    itemRateEntry.grid(row=1, column=4 , padx=(10,0), pady=(10,0))
+
+    itemTypeLabel = Label(window, text="Tipo Produto:",bg="lightblue",font=("bold", 15))
+    itemTypeLabel.grid(row=2, column=1 , padx=(10,0), pady=(10,0))
+
+    itemTypeEntry = Entry(window, textvariable=addItemTypeVar)
+    itemTypeEntry.grid(row=2, column=2 , padx=(10,0), pady=(10,0))
+
+    storeTypeLabel = Label(window, text="Tipo Armazenamento:",font=("bold", 15),bg="lightblue")
+    storeTypeLabel.grid(row=2, column=3 ,padx=(10,0), pady=(10,0))
+
+    storeTypeOptions = OptionMenu(window, addstoreVar, *storeOptions)
+    storeTypeOptions.grid(row=2, column=4 ,padx=(10,0), pady=(10,0))
+
+    AttItemButton = Button(window, text="Atualizar Prod", width=10,height=2 ,font=("bold", 10),bg="blue",fg='white', command=lambda:updateItem())
+    AttItemButton.grid(row=3, column=3, padx=(10,0), pady=(10,0))  
+
+    updateTV.grid(row=5, column=0, columnspan=5, padx=(5))
+
+    scrollBar = Scrollbar(window, orient="vertical", command=updateTV.yview)
+    scrollBar.grid(row=5,column=4, sticky="NSE")
+
+    updateTV.configure(yscrollcommand=scrollBar.set)
+
+    updateTV.heading('#0', text="Prod id")
+    updateTV.heading('#1', text="Nome prod")
+    updateTV.heading('#2', text="Preço")
+    updateTV.heading('#3', text="tipo")
+    updateTV.heading('#4', text="tipo de Estoque") 
+
+    getItemLists()
+
+def viewAllBillsWindow():
+    backButton = Button(window, text="Voltar",font="arial 10",bg="blue",fg='white',command=lambda:readAllData())
+    backButton.grid(row=0, column=0, padx=(10,0))
+
+    window.geometry("830x440")
+    titleLabel = Label(window, text="CUPOM FISCAL", font="arial 30",width=25, fg="blue",bg="lightblue")
+    titleLabel.grid(row=0, column=1, columnspan=4, pady=(10,0))
+
+    billLabel = Label(window, text="Produtos Listados:" ,font="Arial 25",bg='lightblue')
+    billLabel.grid(row=4,column=2)
+
+    billsTV.grid(row=5, column=0, columnspan=4, padx=(5))
+
+    scrollBar = Scrollbar(window, orient="vertical", command=billsTV.yview)
+    scrollBar.grid(row=5,column=3, sticky="NSE")
+
+    billsTV.configure(yscrollcommand=scrollBar.set)
+
+    billsTV.heading('#0', text="Nome Prod")
+    billsTV.heading('#1', text="Preço")
+    billsTV.heading('#2', text="Quantidade")
+    billsTV.heading('#3', text="Valor")
+
+    updateBillsData()
+
+
+def movetoList():
+    remove_all_widgets()
+    viewAllBillsWindow()
 
 loginWindow()
 
