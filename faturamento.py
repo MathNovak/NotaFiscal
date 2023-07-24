@@ -177,6 +177,8 @@ def getItemLists():
 
  ###################### print recibo #########################   
 
+
+
 def print_bill():
     global itemList
     global totalCost
@@ -456,8 +458,11 @@ def mainwindow():
     ListButton = Button(window, text='Lista', width=15, height=2, font="arial 12", command=lambda:movetoList())
     ListButton.grid(row=1, column=2, padx=(10,0), pady=(10,0))
 
-    LogoutBtn = Button(window, text='Sair', width=15, height=2, font="arial 12", command=lambda:iExit())
-    LogoutBtn.grid(row=1, column=4,  pady=(10,0))
+    ClientButton = Button(window, text='Clientes', width=15, height=2, font="arial 12", command=lambda:movetoClient())
+    ClientButton.grid(row=1, column=3, padx=(10,0), pady=(10,0))
+
+    LogoutBtn = Button(window, text='Sair', width=10, height=1, font="arial 10", command=lambda:iExit())
+    LogoutBtn.grid(row=0, column=4,  pady=(10,0))
 
     itemLabel = Label(window, text="Selecionar Item:",bg='lightblue')
     itemLabel.grid(row=2, column=0, padx=(5,0),pady=(10,0))
@@ -516,6 +521,122 @@ def mainwindow():
     generateBill.grid(row=6,column=3, pady=(0.5))
 
     updateListView()
+
+######################### Clientes ##################################
+
+clientTV = ttk.Treeview(height=15, columns=('nome','email', 'cpf', 'telefone'))
+
+def viewAllClients():
+    records = clientTV.get_children()
+    for element in records:
+        clientTV.delete(element)
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    query = f"select * from clientes"
+    cursor.execute(query)
+    data = cursor.fetchall()
+    
+    for row in data:
+        clientTV.insert('','end',text=row['id'],values=(row["nome"],row["email"],row["cpf"],row["telefone"]))
+
+    conn.close()
+
+def cadClient():
+    global addClientNameVar
+    global addClientEmailVar
+    global addClientCpfVar
+    global addClientTelVar
+
+    name = addClientNameVar.get()
+    email = addClientEmailVar.get()
+    cpf = addClientCpfVar.get()
+    telefone = addClientTelVar.get()
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor()
+
+    query =  f"insert into clientes(nome, email, cpf, telefone) values('{name}','{email}','{cpf}','{telefone}')"
+    cursor.execute(query)
+    conn.commit()
+    conn.close()
+
+    addClientNameVar.set("")
+    addClientEmailVar.set("")
+    addClientCpfVar.set("")
+    addClientTelVar.set("")
+
+def movetoClient():
+    remove_all_widgets()
+    clientWindow()
+
+addClientNameVar = StringVar()
+addClientEmailVar = StringVar()
+addClientCpfVar = StringVar()
+addClientTelVar = StringVar()
+
+def refreshTV():
+    readAllData()
+    movetoClient()
+
+
+def clientWindow():
+    backButton = Button(window, text="Voltar",font="arial 10",bg="blue",fg='white',command=lambda:readAllData())
+    backButton.grid(row=0, column=0, padx=(10,0))
+
+    window.geometry("1050x570")
+    titleLabel = Label(window, text="CUPOM FISCAL", font="arial 30",width=25, fg="blue",bg="lightblue")
+    titleLabel.grid(row=0, column=1, columnspan=4, pady=(10,0))
+
+    clientNameLabel = Label(window, text="Nome Client:", bg="lightblue", font=("bold", 15))
+    clientNameLabel.grid(row=1, column=1, padx=(10,0), pady=(10,0))
+
+    clientNameEntry = Entry(window, textvariable=addClientNameVar)
+    clientNameEntry.grid(row=1, column=2 , padx=(10,0), pady=(10,0))
+
+    clientEmailLabel = Label(window, text="Email Client:", bg="lightblue", font=("bold", 15))
+    clientEmailLabel.grid(row=1, column=3, padx=(10,0), pady=(10,0))
+
+    clientEmailEntry = Entry(window, textvariable=addClientEmailVar)
+    clientEmailEntry.grid(row=1, column=4 , padx=(10,0), pady=(10,0))
+
+    clientCpfLabel = Label(window, text="Cpf/Cnpj:", bg="lightblue", font=("bold", 15))
+    clientCpfLabel.grid(row=2, column=1, padx=(10,0), pady=(10,0))
+
+    clientCpfEntry = Entry(window, textvariable=addClientCpfVar)
+    clientCpfEntry.grid(row=2, column=2 , padx=(10,0), pady=(10,0))
+
+    clientTelLabel = Label(window, text="Telefone:", bg="lightblue", font=("bold", 15))
+    clientTelLabel.grid(row=2, column=3, padx=(10,0), pady=(10,0))
+
+    clientTelEntry = Entry(window, textvariable=addClientTelVar)
+    clientTelEntry.grid(row=2, column=4 , padx=(10,0), pady=(10,0))
+
+    cadClientButton = Button(window, text="Cadastrar Cliente", width=15,height=2 ,font=("bold", 15),bg="blue",fg='white', command=lambda:cadClient())
+    cadClientButton.grid(row=1, column=5, padx=(10,0), pady=(10,0))  
+
+    clientLabel = Label(window, text="Clientes:" ,font="Arial 25",bg='lightblue')
+    clientLabel.grid(row=3,column=3)
+
+    refreshButton = Button(window, text="Refresh", font="arial 10",bg="blue",fg='white', command=lambda:refreshTV())
+    refreshButton.grid(row=3, column=5,padx=(10,0), pady=(10,0))
+
+    clientTV.grid(row=4, column=0, columnspan=6, padx=(5))
+
+    scrollBar = Scrollbar(window, orient="vertical", command=updateTV.yview)
+    scrollBar.grid(row=4,column=5, sticky="NSE")
+
+    clientTV.configure(yscrollcommand=scrollBar.set)
+
+    clientTV.heading('#0', text="id")
+    clientTV.heading('#1', text="Nome Cliente")
+    clientTV.heading('#2', text="Email")
+    clientTV.heading('#3', text="Cpf/Cnpj")
+    clientTV.heading('#4', text="Telefone")
+
+    viewAllClients()
+
 
 ###################### att itens #####################################
 
