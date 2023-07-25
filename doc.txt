@@ -1,0 +1,3 @@
+primeiro criar window para escolher o cliente
+segundo definir essa window na geracao da nota
+terceiro criar historico por cliente

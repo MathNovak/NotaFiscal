@@ -122,7 +122,7 @@ def generate_bill():
     costVar.set("0")
     updateListView()
     totalCostVar.set(f"Valor Total = {totalCost:.2f}")
-
+    
 ##################### Double click on ############################
 
 updateItemId = ""
@@ -182,10 +182,16 @@ def getItemLists():
 def print_bill():
     global itemList
     global totalCost
+    global addClientNameVar
+    global contador
+
+    client = addClientNameVar.get()
 
     print("ㅤ"*5)
     print("==================== Nota Fiscal ===================")
     print("================== Seja Bem Vindo ==================\n")
+    print(f"Cliente:            {client}")
+    print("ㅤ"*5)
     print("{:<20}{:<10}{:<15}{:<10}".format("Nome:","Preço:","quantidade:","Valor:"))
     print('----------------------------------------------------')
     
@@ -517,7 +523,7 @@ def mainwindow():
     totalCostLabel = Label(window, textvariable=totalCostVar,bg='lightblue')
     totalCostLabel.grid(row=6,column=1,padx=(5,0), pady=(10,0))
 
-    generateBill = Button(window, text='Gerar Nota',font=("bold", 10), width=15,bg="blue", fg="white" ,command=lambda:print_bill())
+    generateBill = Button(window, text='Gerar Nota',font=("bold", 10), width=15,bg="blue", fg="white" ,command=lambda:movetoNameBill())
     generateBill.grid(row=6,column=3, pady=(0.5))
 
     updateListView()
@@ -624,7 +630,7 @@ def clientWindow():
 
     clientTV.grid(row=4, column=0, columnspan=6, padx=(5))
 
-    scrollBar = Scrollbar(window, orient="vertical", command=updateTV.yview)
+    scrollBar = Scrollbar(window, orient="vertical", command=clientTV.yview)
     scrollBar.grid(row=4,column=5, sticky="NSE")
 
     clientTV.configure(yscrollcommand=scrollBar.set)
@@ -636,6 +642,96 @@ def clientWindow():
     clientTV.heading('#4', text="Telefone")
 
     viewAllClients()
+
+########################## choice client ##############################################
+def movetoChoiceC():
+    remove_all_widgets()
+    choiceClientWindow()
+
+clientCTV = ttk.Treeview(height=15, columns=('nome','email'))
+
+choiceId = ''
+
+def onDoubleClickClient(event):
+    global choiceId
+    global addClientNameVar
+
+    item = clientCTV.selection()
+    choiceId = clientCTV.item(item, "text")
+    item_detail = clientCTV.item(item,"values")
+    addClientNameVar.set(item_detail[1])
+
+def viewAllCClients():
+    records = clientCTV.get_children()
+    for element in records:
+        clientCTV.delete(element)
+
+    conn = pymysql.connect(host="localhost",user="root", password="",db="billservice")
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    query = f"select * from clientes"
+    cursor.execute(query)
+    data = cursor.fetchall()
+    
+    for row in data:
+        clientCTV.insert('','end',text=row['id'],values=(row["nome"],row["email"]))
+
+    clientCTV.bind("<Double-1>", onDoubleClickClient)
+    conn.close()
+
+def choiceClientWindow():
+
+    window.geometry("650x480")
+    backButton = Button(window, text="Voltar",font="arial 10",bg="blue",fg='white',command=lambda:movetoNameBill())
+    backButton.grid(row=0, column=0, padx=(10,0))
+
+    titleLabel = Label(window, text="CUPOM FISCAL", font="arial 30",width=25, fg="blue",bg="lightblue")
+    titleLabel.grid(row=0, column=1, columnspan=4, pady=(10,0))
+
+    chooseClientLabel = Label(window, text="Selecione o Cliente:",bg='lightblue',fg='red',font="Arial 20")
+    chooseClientLabel.grid(row=2, column=2, padx=(5,0),pady=(10,0))
+
+    clientCTV.grid(row=3, column=0, columnspan=6, padx=(5))
+
+    scrollBar = Scrollbar(window, orient="vertical", command=clientCTV.yview)
+    scrollBar.grid(row=3,column=4, sticky="NSE")
+
+    clientCTV.configure(yscrollcommand=scrollBar.set)
+
+    clientCTV.heading('#0', text="id")
+    clientCTV.heading('#1', text="Nome Cliente")
+    clientCTV.heading('#2', text="Email")
+
+    chooseClientEntry = Entry(window, textvariable=addClientNameVar)
+    chooseClientEntry.grid(row=4,column=2, padx=(10,0), pady=(10,0))
+
+    gerarNota = Button(window, text="Gerar",font="arial 10",bg="blue",fg='white',command=lambda:billC())
+    gerarNota.grid(row=4, column=3, padx=(10,0), pady=(10,0))
+
+    viewAllCClients()
+
+def billC():
+    print_bill()
+    remove_all_widgets()
+    mainwindow()
+
+def movetoNameBill():
+    remove_all_widgets()
+    NameBillWindow()
+
+def NameBillWindow():
+    window.geometry("400x350")
+    backButton = Button(window, text="Voltar",font="arial 10",bg="blue",fg='white',command=lambda:readAllData())
+    backButton.grid(row=0, column=0, padx=(10,0))
+
+    titleLabel = Label(window, text="Nome na Nota?", font="arial 30",width=18, fg="blue",bg="lightblue")
+    titleLabel.grid(row=1, column=0, columnspan=7, pady=(40,0))
+
+    simButton = Button(window, text='SIM', width=15, height=2, font="arial 14", bg="blue" ,fg="white" ,command=lambda:movetoChoiceC())
+    simButton.grid(row=2, column=1,pady=(20,0))
+
+    noButton = Button(window, text='NÃO', width=15, height=2, font="arial 14", bg="blue" ,fg="white" ,command=lambda:billC())
+    noButton.grid(row=3, column=1,pady=(20,0))
 
 
 ###################### att itens #####################################
